@@ -1,0 +1,19 @@
+{
+  "checkpoint": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/COMP6011/runs/detect/train/weights/best.pt",
+  "data_config": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/COMP6011/yolo/config.yaml",
+  "dataset_path": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/datasets/kitti",
+  "validation_images": 1496,
+  "imgsz": 640,
+  "device": "mps",
+  "confidence_threshold": 0.25,
+  "metrics": {
+    "metrics/precision(B)": 0.6534769458813976,
+    "metrics/recall(B)": 0.5314781204853325,
+    "metrics/mAP50(B)": 0.6007499700079706,
+    "metrics/mAP50-95(B)": 0.38544377765104965,
+    "fitness": 0.38544377765104965
+  },
+  "mean_latency_ms": 9.364417794496225,
+  "fps": 106.78720470884295,
+  "checkpoint_size_bytes": 5349829
+}

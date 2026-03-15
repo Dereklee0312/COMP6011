@@ -10,6 +10,7 @@ from ultralytics.utils import YAML
 PROJECT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_CONFIG = PROJECT_DIR / "config.yaml"
 DEFAULT_RESULTS_DIR = PROJECT_DIR / "benchmark_results"
+DEFAULT_CHECKPOINT = PROJECT_DIR.parent / "runs" / "detect" / "train" / "weights" / "best.pt"
 
 
 def resolve_output_path(checkpoint: Path, output: Path | None) -> Path:
@@ -64,7 +65,7 @@ def time_inference(
 
 class Config:
     def __init__(self):
-        self.checkpoint = PROJECT_DIR / "yolo26n.pt"
+        self.checkpoint = DEFAULT_CHECKPOINT
         self.data = DEFAULT_DATA_CONFIG
         self.imgsz = 640
         self.device = "mps" if torch.backends.mps.is_available() else "cpu"
