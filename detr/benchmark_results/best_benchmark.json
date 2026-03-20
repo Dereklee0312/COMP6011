@@ -1,0 +1,19 @@
+{
+  "checkpoint": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/COMP6011/detr/train/weights/best.pt",
+  "data_config": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/COMP6011/detr/config.yaml",
+  "dataset_path": "/Users/dereklee0312/Uni/COMP6011 - Research Topics/datasets/kitti",
+  "validation_images": 1496,
+  "imgsz": 640,
+  "device": "mps",
+  "confidence_threshold": 0.25,
+  "metrics": {
+    "metrics/precision(B)": 0.8807048679260743,
+    "metrics/recall(B)": 0.8158640800241614,
+    "metrics/mAP50(B)": 0.8750291719434132,
+    "metrics/mAP50-95(B)": 0.6346307375119146,
+    "fitness": 0.6346307375119146
+  },
+  "mean_latency_ms": 70.41709210839107,
+  "fps": 14.201097632102272,
+  "checkpoint_size_bytes": 66239677
+}

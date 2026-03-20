@@ -6,3 +6,4 @@ yolo/.DS_Store
 runs/detect/train/weights
 yolo/__pycache__
 yolo/benchmark_results/yolo26n_benchmark.json
+detr/train
