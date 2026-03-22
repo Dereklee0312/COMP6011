@@ -7,3 +7,9 @@ runs/detect/train/weights
 yolo/__pycache__
 yolo/benchmark_results/yolo26n_benchmark.json
 detr/train
+PIDNet/utils/__pycache__
+PIDNet/tools/__pycache__
+PIDNet/models/speed/__pycache__
+PIDNet/models/__pycache__
+PIDNet/datasets/__pycache__
+PIDNet/configs/__pycache__
