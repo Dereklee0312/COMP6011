@@ -16,3 +16,11 @@ PIDNet/configs/__pycache__
 PIDNet/data
 PIDNet/pretrained_models/cityscapes
 PIDNet/pretrained_models/imagenet
+SeaFormer/seaformer-cls/.github
+SeaFormer/seaformer-seg/configs
+SeaFormer/seaformer-cls/docs/models
+SeaFormer/seaformer-cls/timm
+SeaFormer/seaformer-seg/demo
+SeaFormer/seaformer-seg/docker
+SeaFormer/seaformer-seg/local_configs
+SeaFormer/seaformer-seg/mmseg/models
