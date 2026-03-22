@@ -10,6 +10,7 @@ import numpy as np
 import _init_paths
 import models
 import torch
+from utils.device import get_device
 import torch.nn.functional as F
 from PIL import Image
 
@@ -75,9 +76,10 @@ if __name__ == '__main__':
     args = parse_args()
     images_list = glob.glob(args.r+'*'+args.t)
     sv_path = args.r+'outputs/'
-    
+    device = get_device()
+
     model = models.pidnet.get_pred_model(args.a, 19 if args.c else 11)
-    model = load_pretrained(model, args.p).cuda()
+    model = load_pretrained(model, args.p).to(device)
     model.eval()
     with torch.no_grad():
         for img_path in images_list:
@@ -87,7 +89,7 @@ if __name__ == '__main__':
             sv_img = np.zeros_like(img).astype(np.uint8)
             img = input_transform(img)
             img = img.transpose((2, 0, 1)).copy()
-            img = torch.from_numpy(img).unsqueeze(0).cuda()
+            img = torch.from_numpy(img).unsqueeze(0).to(device)
             pred = model(img)
             pred = F.interpolate(pred, size=img.size()[-2:], 
                                  mode='bilinear', align_corners=True)

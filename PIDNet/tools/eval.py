@@ -21,6 +21,7 @@ import models
 import datasets
 from configs import config
 from configs import update_config
+from utils.device import get_device
 from utils.function import testval, test
 from utils.utils import create_logger
 
@@ -50,10 +51,13 @@ def main():
     logger.info(pprint.pformat(args))
     logger.info(pprint.pformat(config))
 
-    # cudnn related setting
-    cudnn.benchmark = config.CUDNN.BENCHMARK
-    cudnn.deterministic = config.CUDNN.DETERMINISTIC
-    cudnn.enabled = config.CUDNN.ENABLED
+    device = get_device()
+    if device.type == 'cuda':
+        cudnn.benchmark = config.CUDNN.BENCHMARK
+        cudnn.deterministic = config.CUDNN.DETERMINISTIC
+        cudnn.enabled = config.CUDNN.ENABLED
+    else:
+        cudnn.enabled = False
 
     # build model
     model = model = models.pidnet.get_seg_model(config, imgnet_pretrained=True)
@@ -65,7 +69,7 @@ def main():
    
     logger.info('=> loading model from {}'.format(model_state_file))
         
-    pretrained_dict = torch.load(model_state_file)
+    pretrained_dict = torch.load(model_state_file, map_location='cpu')
     if 'state_dict' in pretrained_dict:
         pretrained_dict = pretrained_dict['state_dict']
     model_dict = model.state_dict()
@@ -77,7 +81,7 @@ def main():
     model_dict.update(pretrained_dict)
     model.load_state_dict(model_dict)
 
-    model = model.cuda()
+    model = model.to(device)
 
     # prepare data
     test_size = (config.TEST.IMAGE_SIZE[1], config.TEST.IMAGE_SIZE[0])
@@ -96,7 +100,7 @@ def main():
         batch_size=1,
         shuffle=False,
         num_workers=0,
-        pin_memory=True)
+        pin_memory=(device.type == 'cuda'))
     
     start = timeit.default_timer()
     
@@ -122,7 +126,7 @@ def main():
 
 
     end = timeit.default_timer()
-    logger.info('Mins: %d' % np.int((end-start)/60))
+    logger.info('Mins: %d' % int((end-start)/60))
     logger.info('Done')
 
 

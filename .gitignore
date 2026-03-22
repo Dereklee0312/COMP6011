@@ -13,3 +13,6 @@ PIDNet/models/speed/__pycache__
 PIDNet/models/__pycache__
 PIDNet/datasets/__pycache__
 PIDNet/configs/__pycache__
+PIDNet/data
+PIDNet/pretrained_models/cityscapes
+PIDNet/pretrained_models/imagenet

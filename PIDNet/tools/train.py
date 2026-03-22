@@ -23,8 +23,13 @@ import datasets
 from configs import config
 from configs import update_config
 from utils.criterion import CrossEntropy, OhemCrossEntropy, BondaryLoss
+from utils.device import get_device
 from utils.function import train, validate
 from utils.utils import create_logger, FullModel
+
+
+def _unwrap_parallel(model):
+    return model.module if isinstance(model, nn.DataParallel) else model
 
 
 def parse_args():
@@ -67,19 +72,26 @@ def main():
         'valid_global_steps': 0,
     }
 
-    # cudnn related setting
-    cudnn.benchmark = config.CUDNN.BENCHMARK
-    cudnn.deterministic = config.CUDNN.DETERMINISTIC
-    cudnn.enabled = config.CUDNN.ENABLED
+    device = get_device()
     gpus = list(config.GPUS)
-    if torch.cuda.device_count() != len(gpus):
-        print("The gpu numbers do not match!")
-        return 0
-    
+    use_cuda_multi = torch.cuda.is_available()
+
+    if use_cuda_multi:
+        if torch.cuda.device_count() != len(gpus):
+            print("The gpu numbers do not match!")
+            return 0
+        cudnn.benchmark = config.CUDNN.BENCHMARK
+        cudnn.deterministic = config.CUDNN.DETERMINISTIC
+        cudnn.enabled = config.CUDNN.ENABLED
+        n_dev = len(gpus)
+    else:
+        cudnn.enabled = False
+        n_dev = 1
+
     imgnet = 'imagenet' in config.MODEL.PRETRAINED
     model = models.pidnet.get_seg_model(config, imgnet_pretrained=imgnet)
  
-    batch_size = config.TRAIN.BATCH_SIZE_PER_GPU * len(gpus)
+    batch_size = config.TRAIN.BATCH_SIZE_PER_GPU * n_dev
     # prepare data
     crop_size = (config.TRAIN.IMAGE_SIZE[1], config.TRAIN.IMAGE_SIZE[0])
     train_dataset = eval('datasets.'+config.DATASET.DATASET)(
@@ -115,7 +127,7 @@ def main():
 
     testloader = torch.utils.data.DataLoader(
         test_dataset,
-        batch_size=config.TEST.BATCH_SIZE_PER_GPU * len(gpus),
+        batch_size=config.TEST.BATCH_SIZE_PER_GPU * n_dev,
         shuffle=False,
         num_workers=config.WORKERS,
         pin_memory=False)
@@ -133,7 +145,10 @@ def main():
     bd_criterion = BondaryLoss()
     
     model = FullModel(model, sem_criterion, bd_criterion)
-    model = nn.DataParallel(model, device_ids=gpus).cuda()
+    if use_cuda_multi:
+        model = nn.DataParallel(model, device_ids=gpus).cuda()
+    else:
+        model = model.to(device)
 
     # optimizer
     if config.TRAIN.OPTIMIZER == 'sgd':
@@ -149,7 +164,7 @@ def main():
     else:
         raise ValueError('Only Support SGD optimizer')
 
-    epoch_iters = int(train_dataset.__len__() / config.TRAIN.BATCH_SIZE_PER_GPU / len(gpus))
+    epoch_iters = int(train_dataset.__len__() / config.TRAIN.BATCH_SIZE_PER_GPU / n_dev)
         
     best_mIoU = 0
     last_epoch = 0
@@ -157,12 +172,13 @@ def main():
     if config.TRAIN.RESUME:
         model_state_file = os.path.join(final_output_dir, 'checkpoint.pth.tar')
         if os.path.isfile(model_state_file):
-            checkpoint = torch.load(model_state_file, map_location={'cuda:0': 'cpu'})
+            checkpoint = torch.load(model_state_file, map_location=device)
             best_mIoU = checkpoint['best_mIoU']
             last_epoch = checkpoint['epoch']
             dct = checkpoint['state_dict']
-            
-            model.module.model.load_state_dict({k.replace('model.', ''): v for k, v in dct.items() if k.startswith('model.')})
+
+            core = _unwrap_parallel(model)
+            core.model.load_state_dict({k.replace('model.', ''): v for k, v in dct.items() if k.startswith('model.')})
             optimizer.load_state_dict(checkpoint['optimizer'])
             logger.info("=> loaded checkpoint (epoch {})".format(checkpoint['epoch']))
 
@@ -170,7 +186,11 @@ def main():
     end_epoch = config.TRAIN.END_EPOCH
     num_iters = config.TRAIN.END_EPOCH * epoch_iters
     real_end = 120+1 if 'camvid' in config.DATASET.TRAIN_SET else end_epoch
-    
+
+    valid_loss = 0.0
+    mean_IoU = 0.0
+    IoU_array = []
+
     for epoch in range(last_epoch, real_end):
 
         current_trainloader = trainloader
@@ -192,12 +212,12 @@ def main():
         torch.save({
             'epoch': epoch+1,
             'best_mIoU': best_mIoU,
-            'state_dict': model.module.state_dict(),
+            'state_dict': _unwrap_parallel(model).state_dict(),
             'optimizer': optimizer.state_dict(),
         }, os.path.join(final_output_dir,'checkpoint.pth.tar'))
         if mean_IoU > best_mIoU:
             best_mIoU = mean_IoU
-            torch.save(model.module.state_dict(),
+            torch.save(_unwrap_parallel(model).state_dict(),
                     os.path.join(final_output_dir, 'best.pt'))
         msg = 'Loss: {:.3f}, MeanIU: {: 4.4f}, Best_mIoU: {: 4.4f}'.format(
                     valid_loss, mean_IoU, best_mIoU)
@@ -206,12 +226,12 @@ def main():
 
 
 
-    torch.save(model.module.state_dict(),
+    torch.save(_unwrap_parallel(model).state_dict(),
             os.path.join(final_output_dir, 'final_state.pt'))
 
     writer_dict['writer'].close()
     end = timeit.default_timer()
-    logger.info('Hours: %d' % np.int((end-start)/3600))
+    logger.info('Hours: %d' % int((end-start)/3600))
     logger.info('Done')
 
 if __name__ == '__main__':
