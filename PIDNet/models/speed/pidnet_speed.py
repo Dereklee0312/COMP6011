@@ -225,48 +225,68 @@ def get_pred_model(name, num_classes):
     
     return model
 
+
+def _speed_device():
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+        return torch.device('mps')
+    return torch.device('cpu')
+
+
+def _device_sync(device):
+    if device.type == 'cuda':
+        torch.cuda.synchronize()
+    elif device.type == 'mps':
+        sync = getattr(getattr(torch, 'mps', None), 'synchronize', None)
+        if callable(sync):
+            sync()
+
+
 if __name__ == '__main__':
     args = parse_args()
     # Comment batchnorms here and in model_utils before testing speed since the batchnorm could be integrated into conv operation
     # (do not comment all, just the batchnorm following its corresponding conv layer)
-    device = torch.device('cuda')
+    device = _speed_device()
     model = get_pred_model(name=args.a, num_classes=args.c)
     model.eval()
     model.to(device)
     iterations = None
-    
-    input = torch.randn(1, 3, args.r[0], args.r[1]).cuda()
+
+    input = torch.randn(1, 3, args.r[0], args.r[1], device=device)
     with torch.no_grad():
         for _ in range(10):
             model(input)
-    
+
         if iterations is None:
             elapsed_time = 0
             iterations = 100
             while elapsed_time < 1:
-                torch.cuda.synchronize()
-                torch.cuda.synchronize()
+                _device_sync(device)
+                _device_sync(device)
                 t_start = time.time()
                 for _ in range(iterations):
                     model(input)
-                torch.cuda.synchronize()
-                torch.cuda.synchronize()
+                _device_sync(device)
+                _device_sync(device)
                 elapsed_time = time.time() - t_start
                 iterations *= 2
             FPS = iterations / elapsed_time
             iterations = int(FPS * 6)
-    
+
         print('=========Speed Testing=========')
-        torch.cuda.synchronize()
-        torch.cuda.synchronize()
+        print('device:', device)
+        _device_sync(device)
+        _device_sync(device)
         t_start = time.time()
         for _ in range(iterations):
             model(input)
-        torch.cuda.synchronize()
-        torch.cuda.synchronize()
+        _device_sync(device)
+        _device_sync(device)
         elapsed_time = time.time() - t_start
         latency = elapsed_time / iterations * 1000
-    torch.cuda.empty_cache()
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()
     FPS = 1000 / latency
     print(FPS)
     
