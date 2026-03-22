@@ -1,0 +1,31 @@
+[project]
+name = "pidnet-benchmarking"
+version = "0.1.0"
+description = "Benchmarking environment for PIDNet (CVPR 2023)"
+readme = "README.md"
+# Downgraded for compatibility with PyTorch 1.11 and official scripts
+requires-python = ">=3.8,<3.11" 
+
+dependencies = [
+    "torch>=1.11.0,<2.0.0",
+    "torchvision>=0.12.0",
+    "numpy<2.0.0",         # Critical: NumPy 2.x breaks older CV code
+    "opencv-python>=4.5.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.64.0",
+    "yacs>=0.1.8",
+    "easydict==1.7",       # Required for config parsing
+    "scipy",               # Required by HRNet backbone
+    "shapely",             # Required for evaluation metrics
+    "Cython",              # Needed for building custom ops
+    "scikit-image",        # Used in data preprocessing
+    "tensorboardX",        # Required for logging
+    "ninja",               # Recommended for faster model compilation
+]
+
+[tool.uv]
+# Automatically syncs local environment with these exact versions
+dev-dependencies = [
+    "matplotlib",
+    "tensorboard",
+]
