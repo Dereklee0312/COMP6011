@@ -1,0 +1,71 @@
+@startuml
+
+skinparam defaultTextAlignment center
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+title Perception Pipeline\nIngestion → Parallel Streams (YOLO26n · PIDNet) → Environmental Tensor
+
+package "1.1 Hardware & Ingestion Layer" as Ingestion {
+  component "High-resolution Monocular RGB Camera\n(Forward-facing, elevated roofline)" as Camera
+  component "Edge Computing Unit\n(Raw video ingest)" as Edge
+  component "Lightweight Edge Preprocessing\n· Geometric undistortion (wide-angle lens warp)\n· Frame resize → model tensor dimensions" as Preprocess
+}
+
+package "Training Phase (Offline)" as Training {
+  component "Unsupervised Domain Adaptation (UDA)\nCalibrates weights for geometric distortion from\nthe elevated truck camera (offline training only)" as UDA
+}
+
+package "1.2 Parallel Perception Layer" as Perception {
+
+  package "Stream A — Dynamic Entity Localization" as StreamA {
+    component "YOLO26n\n(Spatial regression; sub-10ms inference target)" as YOLO
+    component "Sparse outputs\n· Bbox (x, y, w, h)\n· Class (e.g. vehicle, pedestrian, kangaroo)\n· Confidence scores" as StreamAOut
+  }
+
+  package "Stream B — Static Environment Mapping" as StreamB {
+    component "PIDNet\n(Dense pixel classification; derivative branch)" as PIDNet
+    component "High-fidelity semantic mask\n· Drivable sealed asphalt\n· Non-drivable shoulders, physical barriers" as StreamBOut
+  }
+}
+
+package "1.3 Output Fusion Layer" as FusionLayer {
+  component "Central Fusion Module\n(Sparse vectors ↔ dense matrix;\nasynchronous ingest + spatial alignment)" as Fusion
+  component "Environmental Tensor\n(Unified real-time source of truth)" as EnvTensor
+}
+
+' --- Ingestion ---
+Camera --> Edge : RGB video stream
+Edge --> Preprocess
+
+Preprocess --> YOLO : Preprocessed frames\n(concurrent)
+Preprocess --> PIDNet : Preprocessed frames\n(concurrent)
+
+YOLO --> StreamAOut
+PIDNet --> StreamBOut
+
+StreamAOut --> Fusion : Sparse bbox / label vectors
+StreamBOut --> Fusion : Dense pixel-wise map
+
+Fusion --> EnvTensor
+
+' --- UDA (training only) ---
+UDA ..> YOLO : fortifies
+UDA ..> PIDNet : fortifies
+
+note bottom of Fusion
+  **Spatial alignment:** Project Stream A boxes onto Stream B's drivable map
+  e.g. test whether the **bottom edge** of a vehicle bbox intersects
+  **drivable asphalt** vs **shoulder** pixels to contextualize the hazard.
+end note
+
+note right of EnvTensor
+  Single fused representation **exported** to downstream components
+  (real-time source of truth).
+end note
+
+note left of UDA
+  **Not** on the inference path, applied during **offline training** only.
+end note
+
+@enduml
