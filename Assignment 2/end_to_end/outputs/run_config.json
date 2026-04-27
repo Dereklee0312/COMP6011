@@ -1,0 +1,31 @@
+{
+  "data_path": "Student Assignment 10 Cases.xlsx",
+  "sheet_name": "Assignment_Cases",
+  "id_col": "Case ID",
+  "transcript_col": "Paraphrased Dialogue",
+  "label_col": "Risk Level",
+  "mode": "fewshot",
+  "model_name": "gemma4:latest",
+  "base_url": "http://192.168.0.48:11434/v1",
+  "temperature": 0.0,
+  "seed": 7,
+  "labels": [
+    "attempt",
+    "behavior",
+    "ideation",
+    "indicator",
+    "safe"
+  ],
+  "explicit_risk_labels": [
+    "ideation",
+    "behavior",
+    "attempt"
+  ],
+  "label_definitions": {
+    "attempt": "the dialogue describes a past, current, interrupted, or already-started suicide attempt, where the speaker has taken or begun a potentially lethal self-harm action with intent to die.",
+    "behavior": "the dialogue describes suicide-related behavior, preparation, rehearsal, method selection, timing, location, tools, or self-harm behavior, but no confirmed suicide attempt has already started.",
+    "ideation": "the dialogue contains explicit suicidal thoughts, wanting to die, wanting life to end, or imagining suicide, but no specific plan, preparation, rehearsal, self-harm act, or attempt.",
+    "indicator": "the dialogue contains indirect warning signs such as hopelessness, burdensomeness, isolation, feeling trapped, emotional numbness, or severe distress, but no explicit wish to die, suicide plan, suicide behavior, or attempt.",
+    "safe": "the dialogue contains no clear evidence of suicide risk, and may include ordinary stress, positive future plans, help-seeking, or neutral conversation."
+  }
+}
