@@ -3,7 +3,14 @@ from pathlib import Path
 
 import pandas as pd
 from openai import BadRequestError, OpenAI
-from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+)
 
 
 DATA_PATH = Path("Student Assignment 10 Cases.xlsx")
@@ -13,8 +20,8 @@ TRANSCRIPT_COL = "Paraphrased Dialogue"
 LABEL_COL = "Risk Level"
 
 MODE = "fewshot"  # "zeroshot" or "fewshot"
-MODEL_NAME = "llama3.1:8b"
-BASE_URL = "http://localhost:11434/v1"
+MODEL_NAME = "gemma4:latest"
+BASE_URL = "http://192.168.0.48:11434/v1"
 API_KEY = "ollama"
 OUTPUT_DIR = Path("outputs")
 
@@ -22,43 +29,90 @@ TEMPERATURE = 0.0
 SEED = 7
 
 LABELS = ["attempt", "behavior", "ideation", "indicator", "safe"]
+EXPLICIT_RISK_LABELS = ["ideation", "behavior", "attempt"]
 
 LABEL_DEFINITIONS = {
-    "attempt": "the dialogue indicates a suicide attempt or a clearly described past/current attempt.",
-    "ideation": "the dialogue indicates suicidal thoughts, desire to die, or wanting life to end, but no clear attempt.",
-    "behavior": "the dialogue indicates suicide-related or self-harm-related behavior, gestures, planning, rehearsal, or preparatory acts without a confirmed attempt.",
-    "indicator": "the dialogue contains indirect warning signs or concerning markers of suicide risk, but does not clearly reach ideation, behavior, or attempt.",
-    "safe": "no clear evidence of suicide risk in the dialogue.",
+    "attempt": (
+        "the dialogue describes a past, current, interrupted, or already-started suicide attempt, "
+        "where the speaker has taken or begun a potentially lethal self-harm action with intent to die."
+    ),
+    "behavior": (
+        "the dialogue describes suicide-related behavior, preparation, rehearsal, method selection, "
+        "timing, location, tools, or self-harm behavior, but no confirmed suicide attempt has already started."
+    ),
+    "ideation": (
+        "the dialogue contains explicit suicidal thoughts, wanting to die, wanting life to end, "
+        "or imagining suicide, but no specific plan, preparation, rehearsal, self-harm act, or attempt."
+    ),
+    "indicator": (
+        "the dialogue contains indirect warning signs such as hopelessness, burdensomeness, isolation, "
+        "feeling trapped, emotional numbness, or severe distress, but no explicit wish to die, suicide plan, "
+        "suicide behavior, or attempt."
+    ),
+    "safe": (
+        "the dialogue contains no clear evidence of suicide risk, and may include ordinary stress, "
+        "positive future plans, help-seeking, or neutral conversation."
+    ),
 }
 
 FEWSHOT_EXAMPLES = [
     {
-        "dialogue": "Speaker says they took a large number of pills last night because they wanted to die and then woke up in hospital.",
+        "dialogue": (
+            "Speaker says they swallowed a large amount of medication last night because they wanted to die, "
+            "then woke up after someone found them."
+        ),
         "label": "attempt",
-        "rationale": "The dialogue describes a suicide attempt by overdose.",
+        "rationale": "The dialogue describes a suicide attempt by overdose with intent to die.",
     },
     {
-        "dialogue": "Speaker says they have been collecting pills and writing goodbye notes but deny actually trying to die.",
+        "dialogue": (
+            "Speaker says they put a belt around their neck and tightened it, then stopped only because "
+            "someone came into the room."
+        ),
+        "label": "attempt",
+        "rationale": "The dialogue describes an interrupted suicide attempt that had already started.",
+    },
+    {
+        "dialogue": (
+            "Speaker says they have chosen a bridge, picked a date, and written goodbye messages, "
+            "but they have not gone there or harmed themselves yet."
+        ),
         "label": "behavior",
-        "rationale": "The dialogue shows preparatory suicide-related behavior without a confirmed attempt.",
+        "rationale": "The dialogue shows planning and preparation without a confirmed attempt.",
     },
     {
-        "dialogue": "Speaker says they keep thinking everyone would be better off if they were dead and wish they would not wake up.",
+        "dialogue": (
+            "Speaker says they keep rehearsing how they would use a rope and have been testing whether "
+            "the place they chose would hold their weight."
+        ),
+        "label": "behavior",
+        "rationale": "The dialogue shows suicide-related rehearsal and method preparation without a confirmed attempt.",
+    },
+    {
+        "dialogue": (
+            "Speaker says they wish they would not wake up and believe everyone would be better off "
+            "if they were dead, but they do not mention a method, plan, or action."
+        ),
         "label": "ideation",
-        "rationale": "The dialogue expresses suicidal thoughts and a desire to die without a described attempt.",
+        "rationale": "The dialogue expresses suicidal thoughts without preparation, behavior, or attempt.",
     },
     {
-        "dialogue": "Speaker says they feel trapped, hopeless, and like life is pointless, but they do not mention wanting to die or making plans.",
+        "dialogue": (
+            "Speaker says they feel hopeless, trapped, exhausted, and like a burden, but they do not say "
+            "they want to die or describe any suicide-related action."
+        ),
         "label": "indicator",
-        "rationale": "The dialogue contains indirect warning signs without clear ideation, behavior, or attempt.",
+        "rationale": "The dialogue contains indirect warning signs without explicit suicidal ideation or behavior.",
     },
     {
-        "dialogue": "Speaker discusses exam stress and poor sleep but also says they want support to manage workload and make a study plan.",
+        "dialogue": (
+            "Speaker talks about being stressed by deadlines but also mentions weekend plans, support from friends, "
+            "and wanting help to manage their workload."
+        ),
         "label": "safe",
-        "rationale": "The dialogue does not provide clear evidence of suicide risk.",
+        "rationale": "The dialogue describes ordinary stress and help-seeking without suicide-risk evidence.",
     },
 ]
-
 
 def normalize_label(value):
     text = str(value).strip().lower()
@@ -112,6 +166,20 @@ def build_user_message(dialogue):
     ]
     for label in LABELS:
         lines.append(f"- {label}: {LABEL_DEFINITIONS[label]}")
+        
+    lines.extend(
+    [
+        "",
+        "Decision rules:",
+        "- Use the highest-risk label supported by the dialogue.",
+        "- Attempt requires evidence that a suicide attempt has already started, occurred, or was interrupted.",
+        "- Behavior includes suicide-related planning, preparation, rehearsal, selected method, timing, location, or tools.",
+        "- Ideation includes explicit desire to die or suicidal thoughts without plan, preparation, behavior, or attempt.",
+        "- Indicator includes indirect warning signs only, without explicit suicidal desire or suicide-related behavior.",
+        "- Safe means no clear suicide-risk evidence.",
+        "- If the dialogue is ambiguous, do not infer facts that are not stated.",
+    ]
+)
 
     if MODE == "fewshot":
         lines.extend(["", "Examples:"])
@@ -169,29 +237,53 @@ def parse_model_output(raw_text):
     return {"label": label, "rationale": rationale}
 
 
+def safe_divide(num, den):
+    # Prevent div by zero
+    return round(float(num / den), 4) if den else 0.0
+
+
+def compute_explicit_risk_recall(rows):
+    true_explicit_risk = 0
+    correctly_predicted_explicit_risk = 0
+
+    for row in rows:
+        true_label = row["ground_truth"]
+        pred_label = row["predicted_label"]
+
+        if true_label in EXPLICIT_RISK_LABELS:
+            true_explicit_risk += 1
+            if pred_label in EXPLICIT_RISK_LABELS:
+                correctly_predicted_explicit_risk += 1
+
+    return safe_divide(correctly_predicted_explicit_risk, true_explicit_risk)
+
+
 def compute_metrics(rows):
     y_true = [row["ground_truth"] for row in rows]
-    y_pred = [row["predicted_label"] if row["predicted_label"] in LABELS else "__parse_error__" for row in rows]
+    y_pred = [
+        row["predicted_label"] if row["predicted_label"] in LABELS else "__parse_error__"
+        for row in rows
+    ]
 
     per_class = {}
-    precisions = []
-    recalls = []
     f1s = []
 
     for label in LABELS:
         y_true_bin = [1 if value == label else 0 for value in y_true]
         y_pred_bin = [1 if value == label else 0 for value in y_pred]
+
         precision = precision_score(y_true_bin, y_pred_bin, zero_division=0)
         recall = recall_score(y_true_bin, y_pred_bin, zero_division=0)
         f1 = f1_score(y_true_bin, y_pred_bin, zero_division=0)
+        support = sum(y_true_bin)
 
         per_class[label] = {
             "precision": round(float(precision), 4),
             "recall": round(float(recall), 4),
             "f1": round(float(f1), 4),
+            "support": int(support),
         }
-        precisions.append(float(precision))
-        recalls.append(float(recall))
+
         f1s.append(float(f1))
 
     matrix = confusion_matrix(
@@ -199,25 +291,30 @@ def compute_metrics(rows):
         y_pred,
         labels=LABELS + ["__parse_error__"],
     )
+
     confusion = {}
     for row_index, truth_label in enumerate(LABELS):
         confusion[truth_label] = {}
         for col_index, pred_label in enumerate(LABELS):
             confusion[truth_label][pred_label] = int(matrix[row_index][col_index])
 
+    parse_error_count = sum(row["parse_error"] for row in rows)
+
     return {
         "total_cases": len(rows),
-        "parse_error_count": sum(row["parse_error"] for row in rows),
+        "parse_error_count": int(parse_error_count),
+        "parse_error_rate": safe_divide(parse_error_count, len(rows)),
+
         "accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
-        "macro_precision": round(sum(precisions) / len(LABELS), 4),
-        "macro_recall": round(sum(recalls) / len(LABELS), 4),
+        "balanced_accuracy": round(float(balanced_accuracy_score(y_true, y_pred)), 4),
         "macro_f1": round(sum(f1s) / len(LABELS), 4),
+
+        "explicit_risk_labels": EXPLICIT_RISK_LABELS,
+        "explicit_risk_recall": compute_explicit_risk_recall(rows),
+
         "per_class": per_class,
         "labels": LABELS,
         "confusion_matrix": confusion,
-        "parse_error_by_true_label": {
-            LABELS[row_index]: int(matrix[row_index][-1]) for row_index in range(len(LABELS))
-        },
     }
 
 
@@ -238,6 +335,25 @@ def save_outputs(rows, raw_rows, metrics):
         row.update(preds)
         confusion_rows.append(row)
     pd.DataFrame(confusion_rows).to_csv(OUTPUT_DIR / "confusion_matrix.csv", index=False)
+
+    run_config = {
+        "data_path": str(DATA_PATH),
+        "sheet_name": SHEET_NAME,
+        "id_col": ID_COL,
+        "transcript_col": TRANSCRIPT_COL,
+        "label_col": LABEL_COL,
+        "mode": MODE,
+        "model_name": MODEL_NAME,
+        "base_url": BASE_URL,
+        "temperature": TEMPERATURE,
+        "seed": SEED,
+        "labels": LABELS,
+        "explicit_risk_labels": EXPLICIT_RISK_LABELS,
+        "label_definitions": LABEL_DEFINITIONS,
+    }
+
+    with (OUTPUT_DIR / "run_config.json").open("w", encoding="utf-8") as f:
+        json.dump(run_config, f, indent=2)
 
 
 def main():
