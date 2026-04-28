@@ -114,6 +114,7 @@ FEWSHOT_EXAMPLES = [
     },
 ]
 
+
 def normalize_label(value):
     text = str(value).strip().lower()
     if text not in LABELS:
@@ -166,20 +167,20 @@ def build_user_message(dialogue):
     ]
     for label in LABELS:
         lines.append(f"- {label}: {LABEL_DEFINITIONS[label]}")
-        
+
     lines.extend(
-    [
-        "",
-        "Decision rules:",
-        "- Use the highest-risk label supported by the dialogue.",
-        "- Attempt requires evidence that a suicide attempt has already started, occurred, or was interrupted.",
-        "- Behavior includes suicide-related planning, preparation, rehearsal, selected method, timing, location, or tools.",
-        "- Ideation includes explicit desire to die or suicidal thoughts without plan, preparation, behavior, or attempt.",
-        "- Indicator includes indirect warning signs only, without explicit suicidal desire or suicide-related behavior.",
-        "- Safe means no clear suicide-risk evidence.",
-        "- If the dialogue is ambiguous, do not infer facts that are not stated.",
-    ]
-)
+        [
+            "",
+            "Decision rules:",
+            "- Use the highest-risk label supported by the dialogue.",
+            "- Attempt requires evidence that a suicide attempt has already started, occurred, or was interrupted.",
+            "- Behavior includes suicide-related planning, preparation, rehearsal, selected method, timing, location, or tools.",
+            "- Ideation includes explicit desire to die or suicidal thoughts without plan, preparation, behavior, or attempt.",
+            "- Indicator includes indirect warning signs only, without explicit suicidal desire or suicide-related behavior.",
+            "- Safe means no clear suicide-risk evidence.",
+            "- If the dialogue is ambiguous, do not infer facts that are not stated.",
+        ]
+    )
 
     if MODE == "fewshot":
         lines.extend(["", "Examples:"])
@@ -261,7 +262,9 @@ def compute_explicit_risk_recall(rows):
 def compute_metrics(rows):
     y_true = [row["ground_truth"] for row in rows]
     y_pred = [
-        row["predicted_label"] if row["predicted_label"] in LABELS else "__parse_error__"
+        row["predicted_label"]
+        if row["predicted_label"] in LABELS
+        else "__parse_error__"
         for row in rows
     ]
 
@@ -304,14 +307,11 @@ def compute_metrics(rows):
         "total_cases": len(rows),
         "parse_error_count": int(parse_error_count),
         "parse_error_rate": safe_divide(parse_error_count, len(rows)),
-
         "accuracy": round(float(accuracy_score(y_true, y_pred)), 4),
         "balanced_accuracy": round(float(balanced_accuracy_score(y_true, y_pred)), 4),
         "macro_f1": round(sum(f1s) / len(LABELS), 4),
-
         "explicit_risk_labels": EXPLICIT_RISK_LABELS,
         "explicit_risk_recall": compute_explicit_risk_recall(rows),
-
         "per_class": per_class,
         "labels": LABELS,
         "confusion_matrix": confusion,
@@ -334,7 +334,9 @@ def save_outputs(rows, raw_rows, metrics):
         row = {"ground_truth": truth_label}
         row.update(preds)
         confusion_rows.append(row)
-    pd.DataFrame(confusion_rows).to_csv(OUTPUT_DIR / "confusion_matrix.csv", index=False)
+    pd.DataFrame(confusion_rows).to_csv(
+        OUTPUT_DIR / "confusion_matrix.csv", index=False
+    )
 
     run_config = {
         "data_path": str(DATA_PATH),
