@@ -1,0 +1,11 @@
+[project]
+name = "structured-cue-extraction"
+version = "0.1.0"
+description = "LLM structured suicide-risk cue extraction + deterministic rules (Approach 2, COMP6011)"
+requires-python = ">=3.10"
+dependencies = [
+    "openai>=1.30.0",
+    "openpyxl>=3.1.0",
+    "pandas>=2.2.0",
+    "scikit-learn>=1.5.0",
+]

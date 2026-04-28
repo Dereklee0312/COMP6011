@@ -1,0 +1,90 @@
+{
+  "total_cases": 10,
+  "parse_error_count": 0,
+  "parse_error_rate": 0.0,
+  "accuracy": 0.5,
+  "balanced_accuracy": 0.5,
+  "macro_f1": 0.4,
+  "explicit_risk_labels": [
+    "ideation",
+    "behavior",
+    "attempt"
+  ],
+  "explicit_risk_recall": 1.0,
+  "per_class": {
+    "attempt": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 2
+    },
+    "behavior": {
+      "precision": 0.5,
+      "recall": 0.5,
+      "f1": 0.5,
+      "support": 2
+    },
+    "ideation": {
+      "precision": 0.3333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "support": 2
+    },
+    "indicator": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 2
+    },
+    "safe": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 2
+    }
+  },
+  "labels": [
+    "attempt",
+    "behavior",
+    "ideation",
+    "indicator",
+    "safe"
+  ],
+  "confusion_matrix": {
+    "attempt": {
+      "attempt": 0,
+      "behavior": 1,
+      "ideation": 1,
+      "indicator": 0,
+      "safe": 0
+    },
+    "behavior": {
+      "attempt": 0,
+      "behavior": 1,
+      "ideation": 1,
+      "indicator": 0,
+      "safe": 0
+    },
+    "ideation": {
+      "attempt": 0,
+      "behavior": 0,
+      "ideation": 2,
+      "indicator": 0,
+      "safe": 0
+    },
+    "indicator": {
+      "attempt": 0,
+      "behavior": 0,
+      "ideation": 2,
+      "indicator": 0,
+      "safe": 0
+    },
+    "safe": {
+      "attempt": 0,
+      "behavior": 0,
+      "ideation": 0,
+      "indicator": 0,
+      "safe": 2
+    }
+  }
+}

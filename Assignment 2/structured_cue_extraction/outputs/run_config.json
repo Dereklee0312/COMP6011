@@ -1,0 +1,68 @@
+{
+  "data_path": "Student Assignment 10 Cases.xlsx",
+  "sheet_name": "Assignment_Cases",
+  "id_col": "Case ID",
+  "transcript_col": "Paraphrased Dialogue",
+  "label_col": "Risk Level",
+  "model_name": "gemma4:latest",
+  "base_url": "http://192.168.0.48:11434/v1",
+  "temperature": 0.0,
+  "seed": 7,
+  "labels": [
+    "attempt",
+    "behavior",
+    "ideation",
+    "indicator",
+    "safe"
+  ],
+  "explicit_risk_labels": [
+    "ideation",
+    "behavior",
+    "attempt"
+  ],
+  "cue_definitions": {
+    "explicit_suicidal_expression": "True if the dialogue explicitly mentions suicide, killing oneself, ending one's life, or a direct suicidal statement.",
+    "wish_to_die_or_not_exist": "True if the speaker explicitly says they want to die, wish they would not wake up, want life to end, or do not want to exist.",
+    "suicide_method_mentioned": "True if the speaker mentions a possible suicide method or means, such as pills, hanging, jumping, cutting, drowning, firearms, poison, ropes, belts, or similar.",
+    "specific_plan": "True if the speaker describes a concrete plan for suicide, including what they intend to do or how they intend to do it.",
+    "timing_or_location": "True if the speaker identifies a time, date, deadline, place, or location for suicide.",
+    "preparation_or_rehearsal": "True if the speaker describes preparing, rehearsing, collecting means, writing goodbye notes, testing a method, arranging affairs, or similar pre-attempt behaviour.",
+    "self_harm_behavior": "True if the speaker describes deliberate self-harm behavior, even if suicidal intent is unclear.",
+    "attempt_started_or_occurred": "True if the speaker describes a current, recent, interrupted, or already-started suicide attempt.",
+    "past_suicide_attempt": "True if the speaker explicitly mentions a previous suicide attempt, even if it was not recent.",
+    "indirect_warning_signs": "List of indirect risk markers such as hopelessness, burdensomeness, isolation, feeling trapped, severe emotional pain, numbness, despair, or loss of meaning, without explicit suicidal expression.",
+    "protective_or_future_oriented_signs": "List of protective or safety signs such as wanting help, future plans, social support, reasons for living, problem-solving, or explicit denial of suicidal thoughts.",
+    "evidence": "Short transcript-grounded evidence snippets or paraphrases supporting the extracted cues."
+  },
+  "mapping_rules": {
+    "attempt": "attempt_started_or_occurred OR past_suicide_attempt",
+    "behavior": "preparation_or_rehearsal OR specific_plan OR timing_or_location OR suicide_method_mentioned OR self_harm_behavior",
+    "ideation": "explicit_suicidal_expression OR wish_to_die_or_not_exist",
+    "indicator": "indirect_warning_signs is non-empty",
+    "safe": "no suicide-risk cues are present"
+  },
+  "rule_priority": [
+    "attempt",
+    "behavior",
+    "ideation",
+    "indicator",
+    "safe"
+  ],
+  "boolean_cue_fields": [
+    "explicit_suicidal_expression",
+    "wish_to_die_or_not_exist",
+    "suicide_method_mentioned",
+    "specific_plan",
+    "timing_or_location",
+    "preparation_or_rehearsal",
+    "self_harm_behavior",
+    "attempt_started_or_occurred",
+    "past_suicide_attempt"
+  ],
+  "list_cue_fields": [
+    "indirect_warning_signs",
+    "protective_or_future_oriented_signs",
+    "evidence"
+  ],
+  "prompt_design_summary": "Approach 2 asks the LLM to extract structured suicide-risk cues only. Final label assignment is performed by deterministic Python rules using a highest-risk-supported priority order."
+}
