@@ -1,0 +1,81 @@
+@startuml poc_architecture
+' ---------------------------------------------------------------
+' COMP6011 PoC architecture (compact, IEEE single-column).
+' Two pipelines side by side, sharing the dataset on the left,
+' the local LLM in the middle, and the evaluation on the right.
+' ---------------------------------------------------------------
+
+' ---- Compact styling ----
+skinparam dpi 150
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 10
+skinparam shadowing       false
+skinparam roundCorner     4
+skinparam padding         2
+skinparam componentStyle  rectangle
+skinparam ArrowColor      #444444
+skinparam ArrowFontColor  #444444
+skinparam ArrowFontSize   9
+
+skinparam component {
+  BackgroundColor White
+  BorderColor     #444444
+  FontColor       #222222
+}
+skinparam package {
+  BackgroundColor White
+  BorderColor     #999999
+  FontStyle       bold
+  FontSize        10
+}
+skinparam note {
+  BackgroundColor #FFFCE6
+  BorderColor     #888888
+  FontSize        9
+}
+
+left to right direction
+
+' ---- Shared input (left) ----
+component "Dataset\n10 cases (Excel)" as DS
+
+' ---- Shared LLM (middle, used by both pipelines) ----
+component "Local LLM runtime\ngemma4:latest (Ollama)\nT=0, seed=7" as LLM
+
+' ---- Pipeline 1: top row ----
+package "P1: End-to-end few-shot" as P1 {
+  component "Few-shot\nprompt" as P1P
+  component "Label\n+ rationale" as P1O
+}
+
+' ---- Pipeline 2: bottom row ----
+package "P2: Cue + rule mapping" as P2 {
+  component "Cue\nprompt" as P2P
+  component "Cues\n(JSON)" as P2C
+  component "Rule Mapping:\nattempt > behaviour > ideation\n> indicator > safe" as P2R
+  component "Label\n+ evidence" as P2O
+}
+
+' ---- Shared evaluation (right) ----
+component "Evaluation\nAccuracy, Balanced Accuracy,\nMacro F1, per-class,\nExplicit-risk Recall,\nParse-error Rate, Confusion Matrix" as EVAL
+
+' ---- Flows ----
+DS  --> P1P
+DS  --> P2P
+P1P --> LLM
+P2P --> LLM
+LLM --> P1O
+LLM --> P2C
+P2C --> P2R
+P2R --> P2O
+P1O --> EVAL
+P2O --> EVAL
+
+' ---- Out-of-scope note ----
+note bottom of EVAL
+  Clinician review and escalation are outside
+  the PoC but part of the intended supervised
+  workflow.
+end note
+
+@enduml
