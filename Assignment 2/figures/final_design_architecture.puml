@@ -1,0 +1,110 @@
+@startuml
+title Preferred Final Design: Supervised LLM Suicide Risk Screening Engine
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam roundcorner 12
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam activity {
+  BackgroundColor #F8F9FA
+  BorderColor #333333
+  FontColor #111111
+}
+skinparam note {
+  BackgroundColor #FFF8DC
+  BorderColor #555555
+}
+
+start
+
+:Conversational transcript;
+note right
+Input is transcript-level text only.
+The system does not implement the full avatar platform.
+end note
+
+:Consent, access control,\nand privacy checks;
+
+:De-identification /\nPII minimization;
+
+fork
+  partition "Primary Pathway" {
+    :Structured cue extraction LLM;
+    note right
+    Extracts clinically relevant cues only.
+    It does not make the final clinical decision.
+    end note
+
+    :Structured cue JSON;
+    note right
+    Example cues:
+    - explicit suicidal expression
+    - wish to die
+    - method mentioned
+    - specific plan
+    - timing/location
+    - preparation/rehearsal
+    - prior attempt
+    - protective factors
+    end note
+
+    :Deterministic risk mapping;
+    note right
+    Rule-based mapping preserves auditability
+    and applies conservative escalation logic.
+    end note
+  }
+
+fork again
+  partition "Secondary Validation Signal" {
+    :End-to-end LLM classifier;
+    note right
+    Used as a secondary consistency check,
+    not as the primary decision pathway.
+    end note
+
+    :Predicted risk label\n+ short rationale;
+  }
+end fork
+
+:Compare primary label\nwith secondary validation signal;
+
+if (High severity,\nuncertainty, or disagreement?) then (yes)
+  :Conservative escalation flag;
+else (no)
+  :Routine review flag;
+endif
+
+:Generate clinician-facing output;
+note right
+Output includes:
+- proposed risk label
+- extracted cues
+- transcript evidence
+- rule trigger
+- secondary model agreement/disagreement
+- uncertainty flag
+end note
+
+partition "Clinical Governance Layer" {
+  :Clinician review;
+  if (Clinician confirms elevated risk?) then (yes)
+    :Escalate to accredited mental health professional\nor crisis response pathway;
+  else (no)
+    :Record clinician decision\nand continue standard monitoring;
+  endif
+}
+
+partition "Safety, Audit, and Monitoring Controls" {
+  :Audit log;
+  :Performance monitoring;
+  :False negative / false positive review;
+  :Bias and drift monitoring;
+  :Prompt, rule, and model version control;
+  :Governed update and re-validation cycle;
+}
+
+stop
+
+@enduml 
