@@ -26,7 +26,7 @@ end note
 
 :Consent, access control,\nand privacy checks;
 
-:De-identification /\nPII minimization;
+:De-identification;
 
 fork
   partition "Primary Pathway" {
